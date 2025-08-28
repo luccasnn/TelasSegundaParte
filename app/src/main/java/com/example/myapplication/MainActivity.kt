@@ -1,5 +1,8 @@
 package com.example.myapplication
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.painterResource
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.theme.MyApplicationTheme
@@ -32,19 +37,24 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Preview
+
 @Composable
 fun TwitchApp() {
-    var telaAtual by rememberSaveable { mutableStateOf("home") } // home, profile, search
+    var telaAtual by rememberSaveable { mutableStateOf("home") }
 
     when (telaAtual) {
         "home" -> TwitchHomeScreen(
             onClickPerfil = { telaAtual = "profile" },
             onClickPesquisar = { telaAtual = "search" }
         )
+
         "profile" -> TwitchProfileScreen(
             onClickVoltar = { telaAtual = "home" },
-            onClickPesquisar = { telaAtual = "search" }
+            onClickPesquisar = { telaAtual = "search" },
+            onClickPerfil = { telaAtual = "profile" }
         )
+
         "search" -> TwitchSearchScreen(
             onClickHome = { telaAtual = "home" },
             onClickPerfil = { telaAtual = "profile" }
@@ -52,6 +62,13 @@ fun TwitchApp() {
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun DefaultPreview() {
+    MyApplicationTheme {
+        TwitchApp()
+    }
+}
 // ----------------- HOME -----------------
 @Composable
 fun TwitchHomeScreen(onClickPerfil: () -> Unit, onClickPesquisar: () -> Unit) {
@@ -65,24 +82,31 @@ fun TwitchHomeScreen(onClickPerfil: () -> Unit, onClickPesquisar: () -> Unit) {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Topo: perfis
+            // Topo: perfis com imagens diferentes
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                val nomes = listOf("Streamer1", "Streamer2", "Streamer3", "Streamer4")
-                nomes.forEach { nome ->
+                val nomes = listOf("Gaules", "Asmongold", "BaianoTV", "Alanzoka")
+                val imagens = listOf(
+                    R.drawable.streamer1,
+                    R.drawable.streamer2,
+                    R.drawable.streamer3,
+                    R.drawable.streamer4
+                )
+                imagens.forEachIndexed { index, imagemResId ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
+                        Image(
+                            painter = painterResource(id = imagemResId),
+                            contentDescription = "Perfil do ${nomes[index]}",
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(CircleShape)
                                 .border(3.dp, Color.White, CircleShape)
-                                .background(Color.Gray)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(nome, color = Color.White, fontSize = 12.sp)
+                        Text(nomes[index], color = Color.White, fontSize = 12.sp)
                     }
                 }
             }
@@ -96,12 +120,14 @@ fun TwitchHomeScreen(onClickPerfil: () -> Unit, onClickPesquisar: () -> Unit) {
                     .weight(1f)
                     .background(Color(0xFF2C2C2C))
             ) {
-                Box(
+                Image(
+                    painter = painterResource(id = R.drawable.telalive), // substitua "telalive" pelo nome correto do arquivo da imagem
+                    contentDescription = "Telalive",
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .fillMaxWidth(0.9f)
+                        .fillMaxWidth()
                         .aspectRatio(16f / 9f)
-                        .background(Color.DarkGray)
                 )
 
                 // "Seguindo"
@@ -183,26 +209,45 @@ fun TwitchHomeScreen(onClickPerfil: () -> Unit, onClickPesquisar: () -> Unit) {
                 .background(Color(0xFF111111))
                 .padding(horizontal = 16.dp)
         ) {
-            val icones = listOf("\u2302", "\uD83D\uDD0D", "+", "\uD83D\uDD14", "\u25CF")
+            val icones = listOf("\u2302", "\uD83D\uDD0D", "+", "\uD83D\uDD14")
             icones.forEachIndexed { index, icon ->
                 Text(
                     text = icon,
-                    fontSize = if (index == 4) 48.sp else 24.sp,
+                    fontSize = 24.sp,
                     color = Color.White,
                     modifier = when (index) {
                         1 -> Modifier.clickable { onClickPesquisar() } // lupa
-                        4 -> Modifier.clickable { onClickPerfil() } // perfil
                         else -> Modifier
                     }
                 )
             }
+
+            // Imagem do perfil no lugar do círculo
+            Image(
+                painter = painterResource(id = R.drawable.fotoperfil),
+                contentDescription = "Foto do Perfil",
+                contentScale = ContentScale.Crop,  // Isso faz a imagem "cortar" e preencher o espaço
+                modifier = Modifier
+                    .size(34.dp) // tamanho do círculo
+                    .clip(CircleShape)
+                    .border(width = 2.dp, color = Color.Gray, shape = CircleShape) // borda fina
+                    .clickable { onClickPerfil() }
+            )
         }
     }
 }
 
+
+
+
 // ----------------- PROFILE -----------------
+
 @Composable
-fun TwitchProfileScreen(onClickVoltar: () -> Unit, onClickPesquisar: () -> Unit) {
+fun TwitchProfileScreen(
+    onClickVoltar: () -> Unit,
+    onClickPesquisar: () -> Unit,
+    onClickPerfil: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -225,13 +270,17 @@ fun TwitchProfileScreen(onClickVoltar: () -> Unit, onClickPesquisar: () -> Unit)
                 verticalAlignment = Alignment.Top
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
+                    Image(
+                        painter = painterResource(id = R.drawable.fotoperfil),
+                        contentDescription = "Foto do Perfil",
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .offset(y = (-24).dp)
                             .size(96.dp)
                             .clip(CircleShape)
-                            .background(Color.Gray)
+                            .border(width = 2.dp, color = Color.Gray, shape = CircleShape)
                     )
+
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("12.3k seguidores", color = Color.White, fontSize = 12.sp)
                 }
@@ -239,7 +288,7 @@ fun TwitchProfileScreen(onClickVoltar: () -> Unit, onClickPesquisar: () -> Unit)
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Column(verticalArrangement = Arrangement.Center) {
-                    Text("NomeDoStreamer", color = Color.White, fontSize = 24.sp)
+                    Text("Meu Perfil", color = Color.White, fontSize = 24.sp)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("Última vez ao vivo: 2h atrás", color = Color.Gray, fontSize = 14.sp)
                 }
@@ -279,7 +328,7 @@ fun TwitchProfileScreen(onClickVoltar: () -> Unit, onClickPesquisar: () -> Unit)
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        // Rodapé
+        // rodape igual home
         Row(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically,
@@ -290,22 +339,35 @@ fun TwitchProfileScreen(onClickVoltar: () -> Unit, onClickPesquisar: () -> Unit)
                 .background(Color(0xFF111111))
                 .padding(horizontal = 16.dp)
         ) {
-            val icones = listOf("\u2302", "\uD83D\uDD0D", "+", "\uD83D\uDD14", "\u25CF")
+            val icones = listOf("\u2302", "\uD83D\uDD0D", "+", "\uD83D\uDD14")
             icones.forEachIndexed { index, icon ->
                 Text(
                     text = icon,
-                    fontSize = if (index == 4) 48.sp else 24.sp,
+                    fontSize = 24.sp,
                     color = Color.White,
                     modifier = when (index) {
-                        0 -> Modifier.clickable { onClickVoltar() } // casa
-                        1 -> Modifier.clickable { onClickPesquisar() } // lupa
+                        0 -> Modifier.clickable { onClickVoltar() }
+                        1 -> Modifier.clickable { onClickPesquisar() }
                         else -> Modifier
                     }
                 )
             }
+
+            // imagem do perfil
+            Image(
+                painter = painterResource(id = R.drawable.fotoperfil),
+                contentDescription = "Foto do Perfil",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .border(width = 2.dp, color = Color.Gray, shape = CircleShape)
+                    .clickable { onClickPerfil() }
+            )
         }
     }
 }
+
 
 // ----------------- SEARCH -----------------
 @Composable
@@ -388,27 +450,38 @@ fun TwitchSearchScreen(onClickHome: () -> Unit, onClickPerfil: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Grid de categorias (6 retângulos, 3x2)
-            val categorias = listOf("FPS", "MOBA", "RPG", "Aventura", "Simulação", "Luta")
+            // Categorias com imagens
+            val categoriasComImagens = listOf(
+                Triple("League of Legends", R.drawable.lol, "MOBA"),
+                Triple("CS2", R.drawable.cs2, "FPS"),
+                Triple("Dota 2", R.drawable.dota, "MOBA"),
+                Triple("Valorant", R.drawable.valorant, "FPS"),
+                Triple("GTA V", R.drawable.gta, "Aventura"),
+                Triple("IRL", R.drawable.irl, "Vida Real")
+            )
+
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
-                categorias.chunked(3).forEach { linha ->
+                categoriasComImagens.chunked(3).forEach { linha ->
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        linha.forEach { categoria ->
+                        linha.forEach { (nome, imagemRes, tipo) ->
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Box(
+                                Image(
+                                    painter = painterResource(id = imagemRes),
+                                    contentDescription = "Categoria $nome",
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .aspectRatio(3f / 5f)
-                                        .background(Color.DarkGray)
+                                        .clip(MaterialTheme.shapes.medium)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(categoria, color = Color.White)
+                                Text(nome, color = Color.White)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                // Info de espectadores e tag
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -420,7 +493,7 @@ fun TwitchSearchScreen(onClickHome: () -> Unit, onClickPerfil: () -> Unit) {
                                     )
                                     Text("12.3k", color = Color.Gray, fontSize = 12.sp)
                                 }
-                                Text("FPS", color = Color.Gray, fontSize = 12.sp)
+                                Text(tipo, color = Color.Gray, fontSize = 12.sp)
                             }
                         }
                         if (linha.size < 3) {
@@ -429,6 +502,7 @@ fun TwitchSearchScreen(onClickHome: () -> Unit, onClickPerfil: () -> Unit) {
                     }
                 }
             }
+
 
             Spacer(modifier = Modifier.height(80.dp))
         }
@@ -444,19 +518,32 @@ fun TwitchSearchScreen(onClickHome: () -> Unit, onClickPerfil: () -> Unit) {
                 .background(Color(0xFF111111))
                 .padding(horizontal = 16.dp)
         ) {
-            val icones = listOf("\u2302", "\uD83D\uDD0D", "+", "\uD83D\uDD14", "\u25CF")
+            val icones = listOf("\u2302", "\uD83D\uDD0D", "+", "\uD83D\uDD14")
             icones.forEachIndexed { index, icon ->
                 Text(
                     text = icon,
-                    fontSize = if (index == 4) 48.sp else 24.sp,
+                    fontSize = 24.sp,
                     color = Color.White,
                     modifier = when (index) {
                         0 -> Modifier.clickable { onClickHome() } // casa
-                        4 -> Modifier.clickable { onClickPerfil() } // perfil
+                        1 -> Modifier // lupa (já estamos na tela de pesquisa, então não faz nada)
                         else -> Modifier
                     }
                 )
             }
+
+            // Imagem do perfil
+            Image(
+                painter = painterResource(id = R.drawable.fotoperfil),
+                contentDescription = "Foto do Perfil",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .border(width = 2.dp, color = Color.Gray, shape = CircleShape)
+                    .clickable { onClickPerfil() }
+            )
+
         }
     }
 }
