@@ -1,29 +1,47 @@
 package com.example.myapplication
 
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.painterResource
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.myapplication.screens.TwitchProfileScreen
 import com.example.myapplication.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
@@ -37,30 +55,308 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Preview
+data class Categoria(
+    val nome: String,
+    val imagemRes: Int,
+    val tipo: String,
+    val espectadores: String
+)
+
+data class LiveStream(
+    val streamerName: String,
+    val streamerProfilePicRes: Int,
+    val streamPreviewRes: Int,
+    val streamTitle: String,
+    val gameName: String,
+    val viewerCount: String,
+    val tags: List<String>
+)
+
+data class TwitchClip(
+    val thumbnailUrlRes: Int,
+    val duration: String,
+    val views: String,
+    val age: String,
+    val creatorLogoUrlRes: Int,
+    val title: String,
+    val channelName: String,
+    val clipperName: String
+)
+
+sealed class Screen(val route: String) {
+    object Home : Screen("home")
+    object Search : Screen("search")
+    object Activities : Screen("activities")
+    object Profile : Screen("profile")
+}
 
 @Composable
 fun TwitchApp() {
-    var telaAtual by rememberSaveable { mutableStateOf("home") }
+    val navController = rememberNavController()
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color.Black
+    ) {
+        Scaffold(
+            containerColor = Color.Black,
+            bottomBar = { TwitchBottomBar(navController = navController) }
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Home.route,
+                modifier = Modifier.padding(innerPadding)
+            ) {
+                composable(Screen.Home.route) {
+                    TwitchHomeScreen(navController = navController)
+                }
+                composable(Screen.Search.route) {
+                    TwitchSearchScreen(navController = navController)
+                }
+                composable(Screen.Activities.route) {
+                    TwitchActivitiesScreen(navController = navController)
+                }
+                composable(Screen.Profile.route) {
+                    TwitchProfileScreen(navController = navController)
+                }
+            }
+        }
+    }
+}
 
-    when (telaAtual) {
-        "home" -> TwitchHomeScreen(
-            onClickPerfil = { telaAtual = "profile" },
-            onClickPesquisar = { telaAtual = "search" }
-        )
+@Composable
+fun TwitchBottomBar(navController: NavController) {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-        "profile" -> TwitchProfileScreen(
-            onClickVoltar = { telaAtual = "home" },
-            onClickPesquisar = { telaAtual = "search" },
-            onClickPerfil = { telaAtual = "profile" }
-        )
+    Row(
+        horizontalArrangement = Arrangement.SpaceAround,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .background(Color(0xFF111111))
+            .padding(horizontal = 16.dp)
+    ) {
+        val icones = listOf("⌂", "🔍", "+", "🔔")
+        val rotas = listOf(Screen.Home.route, Screen.Search.route, null, Screen.Activities.route)
 
-        "search" -> TwitchSearchScreen(
-            onClickHome = { telaAtual = "home" },
-            onClickPerfil = { telaAtual = "profile" }
+        icones.forEachIndexed { index, icon ->
+            val rota = rotas[index]
+            val isSelected = rota == currentRoute
+            Text(
+                text = icon,
+                fontSize = 28.sp,
+                color = if (isSelected) Color(0xFF9147FF) else Color.White,
+                modifier = if (rota != null) Modifier.clickable {
+                    navController.navigate(rota) {
+                        popUpTo(Screen.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                } else Modifier
+            )
+        }
+        Image(
+            painter = painterResource(id = R.drawable.fotoperfil),
+            contentDescription = "Foto do Perfil",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .border(width = 2.dp, color = if (currentRoute == Screen.Profile.route) Color(0xFF9147FF) else Color.Gray, shape = CircleShape)
+                .clickable { navController.navigate(Screen.Profile.route) }
         )
     }
 }
+
+
+
+@Composable
+fun HeaderTabs(selectedTab: String, onTabSelected: (String) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .background(Color(0x33AAAAAA), shape = RoundedCornerShape(16.dp))
+                .padding(vertical = 4.dp, horizontal = 12.dp)
+        ) {
+            Text("❤", fontSize = 16.sp)
+            Text("Seguindo", fontSize = 12.sp, color = Color.White)
+        }
+        Spacer(modifier = Modifier.width(24.dp))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.clickable { onTabSelected("Ao vivo") }
+        ) {
+            Text(
+                "Ao vivo",
+                fontSize = 18.sp,
+                color = if (selectedTab == "Ao vivo") Color.White else Color.Gray,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(modifier = Modifier.height(3.dp).width(50.dp).background(if (selectedTab == "Ao vivo") Color(0xFF9147FF) else Color.Transparent))
+        }
+        Spacer(modifier = Modifier.width(24.dp))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.clickable { onTabSelected("Clipes") }
+        ) {
+            Text(
+                "Clipes",
+                fontSize = 18.sp,
+                color = if (selectedTab == "Clipes") Color.White else Color.Gray,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(modifier = Modifier.height(3.dp).width(50.dp).background(if (selectedTab == "Clipes") Color(0xFF9147FF) else Color.Transparent))
+        }
+    }
+}
+
+@Composable
+fun StreamPreviewItem(stream: LiveStream) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Box(contentAlignment = Alignment.BottomStart) {
+            Image(
+                painter = painterResource(id = stream.streamPreviewRes),
+                contentDescription = "Prévia da live de ${stream.streamerName}",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+            Row(
+                modifier = Modifier.padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(Color.Red, CircleShape)
+                        .size(10.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("AO VIVO", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+            Text(
+                text = "${stream.viewerCount} espectadores",
+                color = Color.White,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .background(Color(0x99000000), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            Image(
+                painter = painterResource(id = stream.streamerProfilePicRes),
+                contentDescription = "Foto de perfil de ${stream.streamerName}",
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stream.streamerName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(stream.streamTitle, color = Color.White, fontSize = 14.sp)
+                Text(stream.gameName, color = Color.Gray, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row {
+                    stream.tags.forEach { tag ->
+                        Text(
+                            text = tag,
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .background(Color.DarkGray, RoundedCornerShape(10.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                }
+            }
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Mais opções",
+                tint = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+fun ClipPreviewItem(clip: TwitchClip) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Box {
+            Image(
+                painter = painterResource(id = clip.thumbnailUrlRes),
+                contentDescription = "Thumbnail do clipe: ${clip.title}",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+            Text(
+                text = clip.duration,
+                color = Color.White,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .background(Color(0x99000000), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(8.dp)
+            ) {
+                Text("${clip.views} visualizações", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(clip.age, color = Color.White)
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            Image(
+                painter = painterResource(id = clip.creatorLogoUrlRes),
+                contentDescription = "Logo de ${clip.channelName}",
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(clip.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(clip.channelName, color = Color.Gray, fontSize = 14.sp)
+                Text("Clipe criado por ${clip.clipperName}", color = Color.Gray, fontSize = 14.sp)
+            }
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Mais opções",
+                tint = Color.White
+            )
+        }
+    }
+}
+
+
+
 
 @Preview(showBackground = true)
 @Composable
@@ -69,481 +365,4 @@ fun DefaultPreview() {
         TwitchApp()
     }
 }
-// ----------------- HOME -----------------
-@Composable
-fun TwitchHomeScreen(onClickPerfil: () -> Unit, onClickPesquisar: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            // Topo: perfis com imagens diferentes
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val nomes = listOf("Gaules", "Asmongold", "BaianoTV", "Alanzoka")
-                val imagens = listOf(
-                    R.drawable.streamer1,
-                    R.drawable.streamer2,
-                    R.drawable.streamer3,
-                    R.drawable.streamer4
-                )
-                imagens.forEachIndexed { index, imagemResId ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Image(
-                            painter = painterResource(id = imagemResId),
-                            contentDescription = "Perfil do ${nomes[index]}",
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .border(3.dp, Color.White, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(nomes[index], color = Color.White, fontSize = 12.sp)
-                    }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Retângulo da live
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .background(Color(0xFF2C2C2C))
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.telalive), // substitua "telalive" pelo nome correto do arquivo da imagem
-                    contentDescription = "Telalive",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                )
-
-                // "Seguindo"
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 8.dp, top = 16.dp)
-                        .background(Color(0x66AAAAAA), shape = CircleShape)
-                        .padding(6.dp)
-                ) {
-                    Text("❤", fontSize = 16.sp, color = Color.White)
-                    Text("Seguindo", fontSize = 12.sp, color = Color.White)
-                }
-
-                // Ao vivo / Clipes
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.Top,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 16.dp)
-                        .fillMaxWidth(0.5f)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Ao vivo", fontSize = 18.sp, color = Color.White)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .height(2.dp)
-                                .width(40.dp)
-                                .background(Color.White)
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Clipes", fontSize = 18.sp, color = Color.White)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .height(2.dp)
-                                .width(40.dp)
-                                .background(Color.Transparent)
-                        )
-                    }
-                }
-
-                // Ícones laterais
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 8.dp, bottom = 16.dp)
-                ) {
-                    val iconesLaterais = listOf(
-                        "\u25CF", "\u2764", "\uD83D\uDD17", "\uD83D\uDD07", "\u22EE"
-                    )
-                    iconesLaterais.forEachIndexed { index, icon ->
-                        Text(
-                            text = icon,
-                            fontSize = if (index == 0) 72.sp else 24.sp,
-                            color = Color.White
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(80.dp))
-        }
-
-        // Rodapé
-        Row(
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .align(Alignment.BottomCenter)
-                .background(Color(0xFF111111))
-                .padding(horizontal = 16.dp)
-        ) {
-            val icones = listOf("\u2302", "\uD83D\uDD0D", "+", "\uD83D\uDD14")
-            icones.forEachIndexed { index, icon ->
-                Text(
-                    text = icon,
-                    fontSize = 24.sp,
-                    color = Color.White,
-                    modifier = when (index) {
-                        1 -> Modifier.clickable { onClickPesquisar() } // lupa
-                        else -> Modifier
-                    }
-                )
-            }
-
-            // Imagem do perfil no lugar do círculo
-            Image(
-                painter = painterResource(id = R.drawable.fotoperfil),
-                contentDescription = "Foto do Perfil",
-                contentScale = ContentScale.Crop,  // Isso faz a imagem "cortar" e preencher o espaço
-                modifier = Modifier
-                    .size(34.dp) // tamanho do círculo
-                    .clip(CircleShape)
-                    .border(width = 2.dp, color = Color.Gray, shape = CircleShape) // borda fina
-                    .clickable { onClickPerfil() }
-            )
-        }
-    }
-}
-
-
-
-
-// ----------------- PROFILE -----------------
-
-@Composable
-fun TwitchProfileScreen(
-    onClickVoltar: () -> Unit,
-    onClickPesquisar: () -> Unit,
-    onClickPerfil: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Topo roxo
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .background(Color(0xFF9147FF))
-            )
-
-            // Perfil
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Image(
-                        painter = painterResource(id = R.drawable.fotoperfil),
-                        contentDescription = "Foto do Perfil",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .offset(y = (-24).dp)
-                            .size(96.dp)
-                            .clip(CircleShape)
-                            .border(width = 2.dp, color = Color.Gray, shape = CircleShape)
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("12.3k seguidores", color = Color.White, fontSize = 12.sp)
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column(verticalArrangement = Arrangement.Center) {
-                    Text("Meu Perfil", color = Color.White, fontSize = 24.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Última vez ao vivo: 2h atrás", color = Color.Gray, fontSize = 14.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Opções
-            val opcoes = listOf(
-                "Meu canal" to "\uD83D\uDC64",
-                "Painel do criador" to "\uD83D\uDCCB",
-                "Inscrições" to "\u2B50",
-                "Drops" to "\uD83C\uDF81",
-                "Twitch Turbo" to "\uD83D\uDD0B",
-                "Configurações da conta" to "\u2699"
-            )
-
-            Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-            ) {
-                opcoes.forEach { (texto, icone) ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp)
-                    ) {
-                        Text(icone, fontSize = 24.sp, color = Color.White)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(texto, fontSize = 18.sp, color = Color.White)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-        }
-
-        // rodape igual home
-        Row(
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .align(Alignment.BottomCenter)
-                .background(Color(0xFF111111))
-                .padding(horizontal = 16.dp)
-        ) {
-            val icones = listOf("\u2302", "\uD83D\uDD0D", "+", "\uD83D\uDD14")
-            icones.forEachIndexed { index, icon ->
-                Text(
-                    text = icon,
-                    fontSize = 24.sp,
-                    color = Color.White,
-                    modifier = when (index) {
-                        0 -> Modifier.clickable { onClickVoltar() }
-                        1 -> Modifier.clickable { onClickPesquisar() }
-                        else -> Modifier
-                    }
-                )
-            }
-
-            // imagem do perfil
-            Image(
-                painter = painterResource(id = R.drawable.fotoperfil),
-                contentDescription = "Foto do Perfil",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .border(width = 2.dp, color = Color.Gray, shape = CircleShape)
-                    .clickable { onClickPerfil() }
-            )
-        }
-    }
-}
-
-
-// ----------------- SEARCH -----------------
-@Composable
-fun TwitchSearchScreen(onClickHome: () -> Unit, onClickPerfil: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Barra de pesquisa
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .background(Color.DarkGray, shape = CircleShape)
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            ) {
-                Text("🔍", fontSize = 20.sp, color = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Buscar canais, jogos e clipes", color = Color.Gray)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Pesquisas recentes
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                val pesquisas = listOf("Valorant", "League of Legends", "Minecraft")
-                pesquisas.forEach { pesquisa ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🔄", fontSize = 16.sp, color = Color.White)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(pesquisa, color = Color.White)
-                        }
-                        Text("❌", fontSize = 16.sp, color = Color.White)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Categorias / Canais ao vivo com filtro
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("≡", fontSize = 20.sp, color = Color.White) // filtro
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Categorias", color = Color.White)
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Canais ao vivo", color = Color.White)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .height(2.dp)
-                            .width(40.dp)
-                            .background(Color.White)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Grid de categorias (6 retângulos, 3x2)
-            // Categorias com imagens
-            val categoriasComImagens = listOf(
-                Triple("League of Legends", R.drawable.lol, "MOBA"),
-                Triple("CS2", R.drawable.cs2, "FPS"),
-                Triple("Dota 2", R.drawable.dota, "MOBA"),
-                Triple("Valorant", R.drawable.valorant, "FPS"),
-                Triple("GTA V", R.drawable.gta, "Aventura"),
-                Triple("IRL", R.drawable.irl, "Vida Real")
-            )
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                categoriasComImagens.chunked(3).forEach { linha ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        linha.forEach { (nome, imagemRes, tipo) ->
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Image(
-                                    painter = painterResource(id = imagemRes),
-                                    contentDescription = "Categoria $nome",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .aspectRatio(3f / 5f)
-                                        .clip(MaterialTheme.shapes.medium)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(nome, color = Color.White)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(Color.Red, shape = CircleShape)
-                                    )
-                                    Text("12.3k", color = Color.Gray, fontSize = 12.sp)
-                                }
-                                Text(tipo, color = Color.Gray, fontSize = 12.sp)
-                            }
-                        }
-                        if (linha.size < 3) {
-                            repeat(3 - linha.size) { Spacer(modifier = Modifier.weight(1f)) }
-                        }
-                    }
-                }
-            }
-
-
-            Spacer(modifier = Modifier.height(80.dp))
-        }
-
-        // Rodapé fixo
-        Row(
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .align(Alignment.BottomCenter)
-                .background(Color(0xFF111111))
-                .padding(horizontal = 16.dp)
-        ) {
-            val icones = listOf("\u2302", "\uD83D\uDD0D", "+", "\uD83D\uDD14")
-            icones.forEachIndexed { index, icon ->
-                Text(
-                    text = icon,
-                    fontSize = 24.sp,
-                    color = Color.White,
-                    modifier = when (index) {
-                        0 -> Modifier.clickable { onClickHome() } // casa
-                        1 -> Modifier // lupa (já estamos na tela de pesquisa, então não faz nada)
-                        else -> Modifier
-                    }
-                )
-            }
-
-            // Imagem do perfil
-            Image(
-                painter = painterResource(id = R.drawable.fotoperfil),
-                contentDescription = "Foto do Perfil",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .border(width = 2.dp, color = Color.Gray, shape = CircleShape)
-                    .clickable { onClickPerfil() }
-            )
-
-        }
-    }
-}
